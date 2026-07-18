@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wandering Frames — A Photo Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,400&family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #120E0B;
+    --bg-alt: #1C1512;
+    --bg-raised: #241A15;
+    --ink: #EDE3D3;
+    --ink-dim: #A79885;
+    --ink-faint: #6E6154;
+    --accent: #C17F4E;
+    --accent-deep: #6E3524;
+    --line: rgba(237,227,211,0.12);
+    --line-strong: rgba(237,227,211,0.22);
+  }
+
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x:hidden;
+  }
+
+  ::selection{ background: var(--accent-deep); color: var(--ink); }
+
+  ::-webkit-scrollbar{ width: 8px; }
+  ::-webkit-scrollbar-track{ background: var(--bg); }
+  ::-webkit-scrollbar-thumb{ background: var(--bg-raised); border-radius: 4px; }
+
+  a{ color: inherit; text-decoration:none; }
+  button{ font-family:inherit; cursor:pointer; }
+
+  h1,h2,h3{ font-family:'Fraunces', serif; margin:0; }
+
+  .mono{ font-family:'IBM Plex Mono', monospace; letter-spacing:0.04em; }
+
+  /* grain overlay */
+  .grain{
+    pointer-events:none;
+    position:fixed; inset:0; z-index:500;
+    opacity:0.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  :focus-visible{ outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* ---------- views ---------- */
+  .view{ display:none; min-height:100vh; }
+  .view.active{ display:block; }
+
+  /* ---------- sprocket strip (signature motif) ---------- */
+  .sprockets{
+    position:absolute; left:0; right:0; height:14px;
+    display:flex; justify-content:space-between; padding:0 18px;
+    z-index:20; pointer-events:none;
+  }
+  .sprockets.top{ top:0; }
+  .sprockets.bottom{ bottom:0; }
+  .sprockets span{
+    width:8px; height:8px; margin-top:3px;
+    background: var(--bg);
+    border-radius:1px;
+    box-shadow: 0 0 0 1px var(--line-strong);
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    height:100svh;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    padding: 0 6vw 8vh;
+    background:
+      linear-gradient(180deg, rgba(18,14,11,0.15) 0%, rgba(18,14,11,0.55) 60%, rgba(18,14,11,0.95) 100%),
+      radial-gradient(120% 90% at 20% 15%, #3A2A1E 0%, #1C140F 45%, #120E0B 100%);
+    border-bottom: 1px solid var(--line);
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background: repeating-linear-gradient(115deg, rgba(193,127,78,0.05) 0 2px, transparent 2px 26px);
+    mix-blend-mode: overlay;
+  }
+  .hero-top{
+    position:absolute; top:34px; left:6vw; right:6vw;
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12px; z-index:5;
+  }
+  .brandmark{ display:flex; align-items:center; gap:10px; color:var(--ink-dim); }
+  .brandmark .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
+  .hero-meta{ color:var(--ink-faint); }
+
+  .hero-content{ position:relative; z-index:5; max-width:900px; }
+  .hero-eyebrow{
+    color:var(--accent); font-size:12px; text-transform:uppercase;
+    letter-spacing:0.18em; margin-bottom:18px; display:block;
+  }
+  .hero h1{
+    font-size: clamp(48px, 9vw, 118px);
+    font-weight:400; line-height:0.95; color:var(--ink);
+  }
+  .hero h1 em{ font-style:italic; color:var(--ink-dim); }
+  .hero p{
+    margin-top:22px; max-width:480px; color:var(--ink-dim);
+    font-size:16px; line-height:1.6; font-weight:300;
+  }
+  .hero-cta{
+    margin-top:38px; display:inline-flex; align-items:center; gap:14px;
+    padding:15px 26px; border:1px solid var(--line-strong);
+    color:var(--ink); font-size:13px; letter-spacing:0.06em;
+    text-transform:uppercase; background:transparent; transition: all .25s ease;
+  }
+  .hero-cta:hover{ background:var(--accent-deep); border-color:var(--accent-deep); }
+  .hero-cta svg{ width:14px; height:14px; transition: transform .25s ease; }
+  .hero-cta:hover svg{ transform: translateX(4px); }
+
+  .hero-scroll{
+    position:absolute; bottom:24px; right:6vw; z-index:5;
+    color:var(--ink-faint); font-size:11px; display:flex; align-items:center; gap:10px;
+  }
+  .hero-scroll .line{ width:1px; height:34px; background:var(--line-strong); position:relative; overflow:hidden; }
+  .hero-scroll .line::after{
+    content:""; position:absolute; top:-100%; left:0; width:100%; height:100%;
+    background:var(--accent); animation: dripline 2.2s ease-in-out infinite;
+  }
+  @keyframes dripline{ 0%{top:-100%;} 60%{top:100%;} 100%{top:100%;} }
+
+  /* ---------- CATEGORY PICKER ---------- */
+  .section-wrap{ padding: 90px 6vw 120px; position:relative; }
+  .section-head{ margin-bottom:56px; }
+  .section-head .mono.label{ color:var(--accent); font-size:12px; text-transform:uppercase; }
+  .section-head h2{ font-size: clamp(30px, 4vw, 46px); font-weight:400; margin-top:14px; max-width:640px; }
+  .back-link{
+    display:inline-flex; align-items:center; gap:8px; color:var(--ink-dim);
+    font-size:13px; margin-bottom:42px; transition:color .2s ease;
+  }
+  .back-link:hover{ color:var(--ink); }
+  .back-link svg{ width:14px; height:14px; transform: rotate(180deg); }
+
+  .group-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:2px;
+    background: var(--line);
+    border:1px solid var(--line);
+  }
+  .group-card{
+    background: var(--bg);
+    position:relative; padding: 46px 34px; min-height:340px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    overflow:hidden; transition: background .35s ease;
+  }
+  .group-card::before{
+    content:""; position:absolute; inset:0; opacity:0.5;
+    transition: opacity .4s ease, transform .6s ease;
+  }
+  .group-card:hover::before{ opacity:0.85; transform: scale(1.04); }
+  .group-card:hover{ background: var(--bg-alt); }
+  .group-card .g-index{ position:relative; z-index:2; color:var(--ink-faint); font-size:12px; }
+  .group-card .g-body{ position:relative; z-index:2; }
+  .group-card h3{ font-size: clamp(26px,2.6vw,34px); font-weight:400; color:var(--ink); }
+  .group-card p{ color:var(--ink-dim); font-size:13px; margin-top:10px; max-width:220px; line-height:1.5; }
+  .group-card .g-count{ position:relative; z-index:2; color:var(--ink-faint); font-size:12px; margin-top:26px; }
+
+  .tex-country::before{ background: radial-gradient(120% 100% at 80% 0%, #4A2E1C 0%, transparent 60%); }
+  .tex-mood::before{ background: radial-gradient(120% 100% at 10% 100%, #3A2438 0%, transparent 60%); }
+  .tex-angle::before{ background: radial-gradient(120% 100% at 90% 90%, #223327 0%, transparent 60%); }
+
+  @media (max-width: 860px){
+    .group-grid{ grid-template-columns: 1fr; }
+  }
+
+  /* ---------- SUBCATEGORY GRID ---------- */
+  .sub-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:28px;
+  }
+  .sub-card{
+    position:relative; aspect-ratio: 4/5; overflow:hidden;
+    border:1px solid var(--line); cursor:pointer;
+  }
+  .sub-card .swatch{ position:absolute; inset:0; overflow:hidden; background:var(--bg-alt); }
+  .sub-card .swatch img{ width:100%; height:100%; object-fit:cover; display:block; transition: transform .6s ease; }
+  .sub-card:hover .swatch img{ transform: scale(1.06); }
+  .sub-card .grain-local{
+    position:absolute; inset:0; opacity:0.12; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .sub-card .overlay{
+    position:absolute; inset:0;
+    background: linear-gradient(180deg, rgba(18,14,11,0) 40%, rgba(18,14,11,0.88) 100%);
+    display:flex; flex-direction:column; justify-content:flex-end; padding:22px;
+  }
+  .sub-card .s-name{ font-family:'Fraunces', serif; font-size:22px; color:var(--ink); }
+  .sub-card .s-count{ font-size:11px; color:var(--ink-dim); margin-top:6px; }
+
+  @media (max-width: 860px){
+    .sub-grid{ grid-template-columns: repeat(2, 1fr); gap:16px; }
+  }
+
+  /* ---------- FEED ---------- */
+  .feed-bar{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 22px 6vw; pointer-events:none;
+  }
+  .feed-bar > *{ pointer-events:auto; }
+  .feed-bar .back-pill{
+    display:flex; align-items:center; gap:8px; padding:9px 16px;
+    background:rgba(18,14,11,0.55); backdrop-filter: blur(6px);
+    border:1px solid var(--line-strong); font-size:12px; color:var(--ink);
+  }
+  .feed-bar .progress{
+    font-size:12px; color:var(--ink-dim);
+    background:rgba(18,14,11,0.55); backdrop-filter: blur(6px);
+    border:1px solid var(--line-strong); padding:9px 16px;
+  }
+  .feed{
+    height:100svh; overflow-y:scroll; scroll-snap-type: y mandatory;
+  }
+  .frame{
+    height:100svh; scroll-snap-align:start;
+    position:relative; display:flex; align-items:flex-end;
+    border-bottom:1px solid var(--line);
+  }
+  .frame .plate{
+    position:absolute; inset:0; overflow:hidden; background:var(--bg-alt);
+  }
+  .frame .plate img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .frame .plate .grain-local{
+    position:absolute; inset:0; opacity:0.16; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .frame .vignette{
+    position:absolute; inset:0;
+    background: radial-gradient(120% 90% at 50% 40%, transparent 40%, rgba(18,14,11,0.65) 100%),
+                linear-gradient(0deg, rgba(18,14,11,0.92) 0%, rgba(18,14,11,0.1) 32%, transparent 55%);
+  }
+  .frame-content{
+    position:relative; z-index:5; width:100%;
+    padding: 0 6vw 64px;
+    display:flex; justify-content:space-between; align-items:flex-end; gap:24px;
+  }
+  .frame-caption{ max-width:560px; }
+  .frame-caption .f-loc{ color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:0.1em; }
+  .frame-caption h3{ font-size: clamp(24px, 3vw, 36px); font-weight:400; color:var(--ink); margin-top:10px; }
+  .frame-tag{
+    text-align:right; color:var(--ink-faint); font-size:11px; line-height:1.7;
+    white-space:nowrap;
+  }
+  .frame-tag .fnum{ color:var(--ink-dim); font-size:13px; }
+
+  @media (max-width: 700px){
+    .frame-content{ flex-direction:column; align-items:flex-start; gap:14px; }
+    .frame-tag{ text-align:left; }
+  }
+
+  .end-card{
+    height:100svh; scroll-snap-align:start;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:22px; padding:0 6vw;
+  }
+  .end-card h3{ font-size: clamp(26px,4vw,42px); font-weight:400; }
+  .end-card p{ color:var(--ink-dim); max-width:420px; font-size:14px; line-height:1.6; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<!-- ============ HERO VIEW ============ -->
+<div class="view active" id="view-hero">
+  <div class="hero">
+    <div class="sprockets top">
+      <script>document.write('<span></span>'.repeat(22))</script>
+    </div>
+    <div class="hero-top">
+      <div class="brandmark"><span class="dot"></span> by Kantarit S.</div>
+      <div class="hero-meta mono"></div>
+    </div>
+    <div class="hero-content">
+      <span class="hero-eyebrow mono">photo and memories with an olympus</span>
+      <h1>Shutter stops moments,<br>before we <em>forget</em>.</h1>
+      <p>One day, we'll look back at a photo and wonder about the story it holds — whether life took us to the highest peaks or the darkest lows, the memories are what we'll cherish most.</p>
+      <button class="hero-cta" onclick="goTo('categories')">
+        Enter the archive
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    <div class="hero-scroll mono"><span>SCROLL</span><div class="line"></div></div>
+  </div>
+</div>
+
+<!-- ============ CATEGORY PICKER VIEW ============ -->
+<div class="view" id="view-categories">
+  <div class="section-wrap">
+    <a class="back-link" href="#" onclick="goTo('hero');return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      Back to start
+    </a>
+    <div class="section-head">
+      <span class="mono label">01 — Choose your lens</span>
+      <h2>How do you want to look through these photos today?</h2>
+    </div>
+    <div class="group-grid">
+      <div class="group-card tex-country" onclick="goTo('subs','country')">
+        <div class="g-index mono">GROUP A</div>
+        <div class="g-body">
+          <h3>Country</h3>
+          <p>Sorted by geography — where the frame was standing when the shutter went.</p>
+        </div>
+        <div class="g-count mono" id="count-country"></div>
+      </div>
+      <div class="group-card tex-mood" onclick="goTo('subs','mood')">
+        <div class="g-index mono">GROUP B</div>
+        <div class="g-body">
+          <h3>Mood</h3>
+          <p>Sorted by feeling — what the light and the moment were actually doing.</p>
+        </div>
+        <div class="g-count mono" id="count-mood"></div>
+      </div>
+      <div class="group-card tex-angle" onclick="goTo('subs','angle')">
+        <div class="g-index mono">GROUP C</div>
+        <div class="g-body">
+          <h3>Angle</h3>
+          <p>Sorted by vantage point — how close, how low, how far the camera stood.</p>
+        </div>
+        <div class="g-count mono" id="count-angle"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SUBCATEGORY VIEW ============ -->
+<div class="view" id="view-subs">
+  <div class="section-wrap">
+    <a class="back-link" href="#" onclick="goTo('categories');return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      All ways of looking
+    </a>
+    <div class="section-head">
+      <span class="mono label" id="subs-label">02 — Group</span>
+      <h2 id="subs-heading">Pick one</h2>
+    </div>
+    <div class="sub-grid" id="subs-grid"></div>
+  </div>
+</div>
+
+<!-- ============ FEED VIEW ============ -->
+<div class="view" id="view-feed">
+  <div class="feed-bar">
+    <a class="back-pill" href="#" onclick="goToSubsFromFeed();return false;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M13 6l6 6-6 6" transform="rotate(180 12 12)"/></svg>
+      <span id="feed-back-label">Countries</span>
+    </a>
+    <div class="progress mono"><span id="feed-progress">01</span> / <span id="feed-total">06</span></div>
+  </div>
+  <div class="feed" id="feed-scroll"></div>
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+/* ---------------- DATA ---------------- */
+/* ---------------- DATA ---------------- */
+const PHOTOS_LIST = [{"id": 3, "img": "photos/3.jpg", "caption": "Second life begins\nWhen realized\nWe only have one\n\nSo live this one\nAccept the bad\nIn love with the good\nWe only rent this life\nIn this extremely short time\nOf the existence\nJust to realized that\nWe all have One life", "location": null, "date": "Apr 02, 2026", "country": null, "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 4, "img": "photos/4.jpg", "caption": "True love\nIs when self love is shine too\n✨", "location": "UNO MAS, 54th Flr, Centara Grand Central World", "date": "Apr 01, 2026", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 5, "img": "photos/5.jpg", "caption": "Time flies by\nI realized, all the way here, I know the textbook even more than I know myself\nSo, kids, please try and learn about life and yourself more\nIt will be worth it", "location": "สถานตากอากาศบางปู", "date": "Mar 21, 2026", "country": "Thailand", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 6, "img": "photos/6.jpg", "caption": "Another way to live a life - a day to chill without worrying\nBecause sometime freedom is the only thing you need\n\nWat Phra Si Sanphet - Ayuthaya", "location": "วัดพระศรีสรรเพชญ์", "date": "Mar 13, 2026", "country": "Thailand", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 7, "img": "photos/7.jpg", "caption": "ยามเย็น ณ อยุธยา", "location": "วัดราชบูรณะ", "date": "Feb 03, 2026", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 8, "img": "photos/8.jpg", "caption": "สุดท้ายแล้ว สิ่งที่เราต้องการคือ ความสุขกับสิ่งตรงหน้า\nของขวัญที่ดีที่สุดที่ได้เกิดมาอาจเป็นแค่ ได้รู้สึกว่า “ดีจังที่…”\nเพราะมันก็เพียงพอให้เรารู้สึกว่าชีวิตมีความหมายละ", "location": "Kokura Castle, Kitakyushu-Shi, Fukuoka, Japan", "date": "Feb 01, 2026", "country": "Japan", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 9, "img": "photos/9.jpg", "caption": "🌸", "location": "ภูลมโล,ซากุระเมืองไทย,นางพญาเสือโคร่ง,กกสะทอน", "date": "Jan 21, 2026", "country": "Thailand", "mood": "Wonder", "angle": "Vertical Frame"}, {"id": 10, "img": "photos/10.jpg", "caption": "Greenery side of life", "location": "ภูทับเบิก เพชรบูรณ์", "date": "Jan 17, 2026", "country": "Thailand", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 11, "img": "photos/11.jpg", "caption": "Best view of Phu Hin Rongkla", "location": "วัดป่าภูหินร่องกล้า", "date": "Jan 16, 2026", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 12, "img": "photos/12.jpg", "caption": "Good evening at first camping\nรีวิวตั้งแคมป์ครั้งแรก ที่ภูหินร่องกล้า 29-30 Dec 2025\n\n🚙 นั่งรถยาวๆออกตี1ถึง8โมง นอนบนรถฟีลขึ้นเครื่องบินเลย ถนนโล่งมาก ขึ้นดอยไม่ทันแต่อากาศหนาวมากตอนก่อนมีแดด \n⛰️ ภูทับเบิกเต็มไปด้วยโรงแรมชมทะเลหมอก ไม่ค่อยสวยเท่าไร สวยแค่วิวที่มองลงมา แต่ได้เห็นเลี้ยวหักศอกที่พิสูจน์ความสามารถของ Honda civic ที่ขนของเต็มท้ายรถ\n🥕 ได้แวะชมร้านขายของ ซื้อต้นหอมญี่ปุ่นสดๆที่ลูกเจ้าของร้านเพิ่งเอามาแกะสดๆเลย มีเบบี้แครอทและผักอื่นๆเยอะมาก \n🪨 ข้าวเที่ยงที่ก่อนไปเดินลานหินปุ่น ไก่ย่างบนดอยดีสมชื่อ เดิน3โลไปดูลานหินปุ่ม วิวดี หินปุ่มแปลกตา ได้ลองเดินตามทางไปเรื่อยๆ จะเพลินก็ไม่เชิง เหนื่อยนิดนึงเพราะไม่ค่อยได้ออกกำลังในช่วงนั้นเลย\n🏕️ ถึงไฮไลต์คือการตั้งเตนท์ ได้ตั้งในลานต้นสน ด้านหน้าสุดวิวสวยมากๆๆ ตอนนั้นเที่ยงกำลังดีได้นอนพักในเตนท์กับต้นสนมันดีมากๆ หาจากโรงแรมไมไ่ด้\n🌸 ชมวิวที่วัดป่าภูหินร่องกล้า เห็นแล้วมันแบบ เหมือนดูยุฟุอินไรงั้นเลย มีต้นพญาเสือโคร่งแทรกในหมู่บ้านในแสงยามเย็น แต่จุดชมวิวเป็นทรายลาดลงเขา ไม่ค่อยปลอดภัย อนาคตน่าจะดีขึ้น\n🥘 ช่วงเวลาค่ำของการตั้งแคมป์คือช่วงที่มีอะไรหลายอย่าง ทั้งได้เรียนรู้ว่าควรเอาไฟมาเพิ่ม แต่เตนท์ข้างๆเห็นเราทุลักทุเลเลยเอาขาตั้งไฟมาให้ ได้ลองทำอาหาร จุดเตาแก๊สกินกลางลมหนาว ฟินจริงๆแบบใช้คำว่าฟินได้โดยไม่ขวนขวายอะไรทั้งนั้น แต่ดีใจที่เราสามารถแพ็คเนื้อมาเกือบวันได้ในลังโฟม โดยที่เนื้อยังเย็นและมีน้ำเย็นๆกิน โดยวิธีน้ำแข็งในขวด เวิคมากๆ แล้วก็ได้ชมดาว ไปอาบน้ำก็คือคดีได้น้ำอุ่นพอดี สงสารคนอาบน้ำเย็น 555 แต่ี่ชอบที่สุดคือได้เห็นคนมารวมตัวกันตั้งแคมป์ครั้งแรก และที่นี่แม้เตนท์จะแน่นแต่สงบมาก ไม่มีเสียงดังเลย เราเดินชมไอเดียแต่ละเตนท์สร้างความ cozy ในแบบของตัวเอง บ้างก็ย่างเนื้อ บางคนมากับเพื่อน บางคนมาคนเดียว บางคนมากันทั้งบ้าน เป็นอะไรที่เป็นมู้ดที่หาไม่ได้จากโรงแรมจริงๆ และมันเหมือนแบบ คนเราก็ต้องการแค่นี้แหละ ไม่ได้ต้องเลิศหรู แต่อบอุ่นและสบายใจ\n☀️ เช้าเราเลือกตื่นไม่เช้ามาก รับลมตอนเช้า เราออกมาชงโกโก้กินตอนเช้าแบบเงียบๆ พักผ่อนใจ เป็นช่วงเวลาที่ฝันไว้เลย อากาศหนาวๆ โกโก้อุ่นๆ และแดดที่ค่อยๆขึ้น \n🌸 เราไปชมทุ่งลมโล นั่งรถจนเมื่อย เพราะทางขรุขระมากแต่สวย ต้นพญาเสือโคร่งดูเชิยแต่สวยแบบซากุระได้เลย แค่ดูเฉยๆยังสวย สีชมพูสดตัดกับท้องฟ้าสดใสได้ดีเลย \n❤️ เป็นครั้งแรกที่ดีมาก หลักๆเลยเพราะบนภูหินร่องกล้าอากาศดีมาก และเราได้เตนท์หน้าๆ ได้รับบรรยากาศของ คน-ธรรมชาติ  ที่ไม่ได้ต้องการอะไรมาก แฮปปี้กับสิ่งที่มีก็พอ", "location": "อุทยานแห่งชาติภูหินร่องกล้า", "date": "Jan 15, 2026", "country": "Thailand", "mood": "Joy", "angle": "Vertical Frame"}, {"id": 13, "img": "photos/13.jpg", "caption": "Where is this?\nNot the 🇯🇵\nBut has🌸", "location": "วัดป่าภูหินร่องกล้า", "date": "Jan 12, 2026", "country": "Thailand", "mood": "Wonder", "angle": "Vertical Frame"}, {"id": 14, "img": "photos/14.jpg", "caption": "Not too late for Christmas?", "location": "Club Lago by Toscana Valley", "date": "Jan 11, 2026", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 15, "img": "photos/15.jpg", "caption": "By the side of the lake and the winter breeze", "location": "อ่างเก็บน้ำสายศร อุทยานแห่งชาติเขาใหญ่", "date": "Jan 10, 2026", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 16, "img": "photos/16.jpg", "caption": "Bang Pu\n5 Jan 2026", "location": "Bangpu Recreation Center", "date": "Jan 08, 2026", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 17, "img": "photos/17.jpg", "caption": "Thank you for 2025 for my internal growth\nLets continue 2026 with more love, willing and strength", "location": "ภูลมโล,ซากุระเมืองไทย,นางพญาเสือโคร่ง,กกสะทอน", "date": "Jan 06, 2026", "country": "Thailand", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 18, "img": "photos/18.jpg", "caption": "เส้นทางแห่งการเติบโต 3 เส้น🏎️🩺💻\n\nCongrats bro &#064;okihide_nekoto_3522 &#064;zno_kittaphot", "location": "โรงเรียนสวนกุหลาบวิทยาลัย", "date": "Dec 20, 2025", "country": "Thailand", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 19, "img": "photos/19.jpg", "caption": "เรื่องราว ความทรงจำมากมาย เวลาที่พาให้ทุกอย่างเปลี่ยนแปลง\nหันกลับมานึกถึงตัวเองเมื่อปีก่อน สองปีก่อน สามปีก่อน มีอะไรที่เราตอนนั้นไม่คิดว่าจะได้รับมา\nเวลาพัดผ่านมาจนใกล้จบปีห้า จิตวิญญาณของวิชาชีพที่เติบโตในใจเรา เส้นทางอนาคตและชีวิตที่กำลังจะสร้าง\nความรู้สึกของวัยรุ่นกำลังผ่านเข้าสู่วัยผู้ใหญ่มือใหม่ใกล้เข้ามา\nชีวิตของเรากำลังผลิบานไปแบบใหนกันนะ…", "location": "Kyoto, Japan", "date": "Dec 05, 2025", "country": "Japan", "mood": "Nostalgia", "angle": "Wide Shot"}, {"id": 20, "img": "photos/20.jpg", "caption": "Beautiful things\nIs sometimes a hard one\nBut it is answer to the question\nIf it is worth fighting for\n\nLove is one of them\n\nKyoto Feb-March 2025", "location": "Kyoto, Japan", "date": "Sep 21, 2025", "country": "Japan", "mood": "Determination", "angle": "Wide Shot"}, {"id": 21, "img": "photos/21.jpg", "caption": "Embrace good, embrace bad\nThinking something less, and more for another thing\nBelieve in possibilities in life\nBuild love\nMake life\nWhat a rollercoaster life is\nAt least I can smile\nKnowing future can be hard again\nBut at least I can then smile again", "location": "Chiang Kai-Shek Memorial Library", "date": "Aug 31, 2025", "country": "Taiwan", "mood": "Reflection", "angle": "Square Frame"}, {"id": 22, "img": "photos/22.jpg", "caption": "Padova vibe\n2023", "location": "Padua, Italy", "date": "Aug 28, 2025", "country": "Italy", "mood": "Nostalgia", "angle": "Vertical Frame"}, {"id": 23, "img": "photos/23.jpg", "caption": "บางที่ เราอาจจะไม่ได้กลับไป\nบางสิ่ง อาจจะไม่ได้ทำมันอีก\nทำให้นึกได้เลยว่า เพราะชีวิตมีจำกัด\nมันเลยมีค่ามากๆเลยไง", "location": "Hotel at Yufuin Floral Village", "date": "Aug 15, 2025", "country": "Japan", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 24, "img": "photos/24.jpg", "caption": "5 years later, glad to came here again, grow up so much, has gone so far, i’m pround❤️\n\nArashiyama forest, Kyoto \n2020 - 2025", "location": "Arashiyama Bamboo", "date": "Jul 27, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 25, "img": "photos/25.jpg", "caption": "Pain make you feel like you’re on the edge\nBut in the end, your edge is growing and\nit’s mean that you’re stonger\n\nVenice, May 2023", "location": "Piazza San Marco", "date": "Jul 11, 2025", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 26, "img": "photos/26.jpg", "caption": "Japan evening🇯🇵", "location": "Uji, Kyoto", "date": "Jul 03, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 27, "img": "photos/27.jpg", "caption": "Being alive reminds our finite time to be happy", "location": "Miyajidake Shrine", "date": "Jun 26, 2025", "country": "Japan", "mood": "Joy", "angle": "Wide Shot"}, {"id": 28, "img": "photos/28.jpg", "caption": "Japan double mood", "location": "Arashiyama, Kyoto", "date": "Jun 07, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 29, "img": "photos/29.jpg", "caption": "Spring loves❤️", "location": null, "date": "Jun 05, 2025", "country": null, "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 30, "img": "photos/30.jpg", "caption": "", "location": "Zenkokuji Temple", "date": "Jun 05, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 31, "img": "photos/31.jpg", "caption": "Lovers in Kyoto", "location": "Gion, Kyoto", "date": "May 29, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 32, "img": "photos/32.jpg", "caption": "We can’t keep the present time forever\nBut memories does", "location": "Kyoto, Japan", "date": "May 11, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 33, "img": "photos/33.jpg", "caption": "Shiba inu in Hualien, Taiwan", "location": "Hualien, Taiwan", "date": "May 09, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 34, "img": "photos/34.jpg", "caption": "There’s a moment when you realize things do not need perfection to be admirable.\nIt is how happiness simply becomes.", "location": "Kaki Gori", "date": "May 08, 2025", "country": "Thailand", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 35, "img": "photos/35.jpg", "caption": "Appreciate life while I have it.\nHard day can be a good day in my memories too.", "location": "Kokura Castle", "date": "May 01, 2025", "country": "Japan", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 36, "img": "photos/36.jpg", "caption": "สงบในความวุ่นวาย\nอิ่มเอมใจหลังความกังวล\nกำลังใจท่ามกลางความยากลำบาก\nของเก่าท่ามกลางของใหม่\n\nWabi-Sabi 侘寂", "location": "Kumamoto Castle", "date": "Apr 27, 2025", "country": "Japan", "mood": "Stillness", "angle": "Wide Shot"}, {"id": 37, "img": "photos/37.jpg", "caption": "Evening shadow\n\nKyoto, Japan 2025", "location": "石塀小路", "date": "Apr 25, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 38, "img": "photos/38.jpg", "caption": "Forest bathing", "location": "天主教五峰旗聖母朝聖地 Catholic Sanctuary of Our WuFongCi, Taiwan", "date": "Apr 17, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 39, "img": "photos/39.jpg", "caption": "22\nCry lot, Love lot, still alive", "location": "Hualien, Taiwan", "date": "Apr 10, 2025", "country": "Taiwan", "mood": "Stillness", "angle": "Vertical Frame"}, {"id": 40, "img": "photos/40.jpg", "caption": "ตอนตัดสินใจ อย่ากลัวที่จะทำ กลัวที่จะไม่ได้ทำดีกว่า\nตอนที่กำลังทำ อย่าเสียดายการตัดสินใจอื่น แต่ควรเต็มที่กับการตัดสินใจนั้น", "location": "Arashiyama Bamboo", "date": "Apr 07, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 41, "img": "photos/41.jpg", "caption": "Another bloom in Taipei, Qingfengting", "location": "Bishanyan Kaizhang Shengwang Temple", "date": "Mar 13, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 42, "img": "photos/42.jpg", "caption": "Kyoto mood", "location": "Gion, Kyoto", "date": "Mar 12, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 43, "img": "photos/43.jpg", "caption": "Hualien beach", "location": "七星潭 - Qixingtan Beach", "date": "Mar 11, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 44, "img": "photos/44.jpg", "caption": "A little plum tree at a little shrine\nNishiki-tenmanju shrine, Kyoto", "location": "Nishiki Tenmanju Shrine", "date": "Mar 09, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 45, "img": "photos/45.jpg", "caption": "Night Fushimi Inari", "location": "Fushimi Inari Taisha", "date": "Mar 08, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 46, "img": "photos/46.jpg", "caption": "Same place, different people, different memories.", "location": "Tenryu-ji", "date": "Mar 06, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 47, "img": "photos/47.jpg", "caption": "Snowflakes lasting this special moment into memories.\nFeel like someone is watching over us and gives us a good sprinkle of snow at the right time.", "location": "祇園白川十六夜桜", "date": "Mar 05, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 48, "img": "photos/48.jpg", "caption": "Art tell stories with no words.", "location": "臺北市立美術館 Taipei Fine Arts Museum", "date": "Mar 04, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 49, "img": "photos/49.jpg", "caption": "In the crowd walk down the streets\nEvery city just you and me\nRide the train through forest and trees\nYou wanna go with me Wanna go with me\n- ไปดูดอกไม้ไฟด้วยกันมั้ย, by NO ONE ELSE", "location": "& Market", "date": "Mar 04, 2025", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 50, "img": "photos/50.jpg", "caption": "Great 101 view from Neihu & Maokong", "location": "碧山巖開漳聖王廟", "date": "Mar 02, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 51, "img": "photos/51.jpg", "caption": "Third time, but best time at kinkaku-ji", "location": "Kinkaku-ji", "date": "Mar 01, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 52, "img": "photos/52.jpg", "caption": "Blooming in Taipei🇹🇼", "location": "Chiang Kai-Shek Memorial Library", "date": "Feb 26, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 53, "img": "photos/53.jpg", "caption": "Sunlight. Bamboo. Snowflakes. Memories.", "location": "Arashiyama Bamboo", "date": "Feb 25, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 54, "img": "photos/54.jpg", "caption": "แสงยามเย็น", "location": "Hokan-Ji Tempel", "date": "Feb 25, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 55, "img": "photos/55.jpg", "caption": "Shinsaibashi time with u", "location": "心斎橋筋（Shinsaibashi-suji）", "date": "Feb 24, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 56, "img": "photos/56.jpg", "caption": "🎵In this crazy world, I do.\nI just want you🎵\n-Coloratura, Coldplay", "location": "Kinkaku-ji", "date": "Feb 22, 2025", "country": "Japan", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 57, "img": "photos/57.jpg", "caption": "More Beijing", "location": null, "date": "Feb 11, 2025", "country": null, "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 58, "img": "photos/58.jpg", "caption": "More Tsinghua pic", "location": "National Tsing Hua University", "date": "Feb 04, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 59, "img": "photos/59.jpg", "caption": "Beijing Scenery \n- Olympus EM5 Mk2, Olympus M. 12-40 mm f2.8", "location": "Tsinghua University", "date": "Feb 01, 2025", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 60, "img": "photos/60.jpg", "caption": "Great wall of china 🇨🇳", "location": "Mutianyu Great Wall", "date": "Jan 11, 2025", "country": "China", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 61, "img": "photos/61.jpg", "caption": "Happy new year 2025\nขอบคุณปีที่ผ่านมา ทั้งยากและง่าย สุขใจและทุกข์ใจ ท้าทาย กดดัน ตื่นเต้น กลัว หรืออบอุ่นใจ เข้มแข็ง ทุกอย่างประกอบร่างกันเป็นวันคืนที่ได้ผ่านไป ที่เราจะจดจำไว้ตลอดไป\nปีนี้มีของขวัญหลายชิ้น ที่เราเคยคิดว่าไม่น่าจะมี ปี2024ทำให้ผมเชื่ออีกครั้งว่า โลกนี้มีของขวัญล้ำค่าให้เราอยู่ ถ้าเรามองหามันเจอ เราจะรักษามันไว้ให้ดีที่สุด", "location": "Beijing Airport, Beijing, China", "date": "Jan 03, 2025", "country": "China", "mood": "Joy", "angle": "Vertical Frame"}, {"id": 62, "img": "photos/62.jpg", "caption": "Best time in Beijing with fam\nHNY 2025", "location": "Tsinghua University", "date": "Dec 31, 2024", "country": "Taiwan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 63, "img": "photos/63.jpg", "caption": "Oh, Christmas lights\nLight up the street\nLight up the fireworks in me\nMay all your troubles soon be gone\nThose Christmas lights keep shining on\n- Christmas light by Coldplay", "location": "เซนทรัลเวิร์ล", "date": "Dec 25, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 64, "img": "photos/64.jpg", "caption": "“I only hope that you can see yourself for who you are and never change that person. Love yourself, you deserve to be loved. Keep on living”\n“your life is ALWAYS worth living.”\n“Stay with us”\n-Dan Reynolds of IMAGINE DRAGONS\nLOOM TOUR 23.11.2024\nตามมา 5 ปีกว่าจะได้ฟังคอนเสิตกับตัวครั้งแรก จะบอกว่าสั้นไปก็ใช่ แต่พี่แดนพลังไม่ตก สนุกฟินอินมากๆ นำ้ตาไหลจริงๆ ขนลุกจริงๆ เป็นวงแรกที่ฟังแล้วฟังจริงๆติดมากๆ ในที่สุดก็ได้มาฟังสดๆ และดีใจที่ได้รู้จัก imagine dragons ไม่รู้จะอธิบายยังไง แต่ dan ถ่ายทอดอารมณ์ของชีวิตออกมาได้ดีมากๆ อย่างที่ได้พูดในคอน แต่สุดท้ายฝีมือไม่ตกจริงๆทั้งๆที่ไปคอนมาพักวันเดียว บินมานี่คือเพราะหูเคลืองทองจริงๆ\nร้องเพลงไป ยิ้มไป ร้องไห้ไป จริงๆนะ\nWe’re walking the wire, love\nWe‘re walking the wire, love\nWe couldn’t be higher up\nWe‘re walking the wire, wire, wire\nSo, look out down below\nLook out down below\nLook out down below\nWalking the wire, wire, wire\nSo, look out down below\n- walking the wire", "location": "หอประชุมศูนย์สิริกิจ", "date": "Nov 23, 2024", "country": "Thailand", "mood": "Joy", "angle": "Wide Shot"}, {"id": 65, "img": "photos/65.jpg", "caption": "Awakening BKK 2024", "location": null, "date": "Nov 18, 2024", "country": null, "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 67, "img": "photos/67.jpg", "caption": "The whole thing is not to just being in love\nIt needs a lot of self love and courage to face whatever will come to you, with belief in reasons to love, I think that’s what take me here❤️\nA long way to go\n3 mo. of us", "location": "สะพานพระพุทธยอดฟ้า", "date": "Nov 02, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 68, "img": "photos/68.jpg", "caption": "คิดถึง🫶🇮🇹", "location": "Piazza San Marco", "date": "Oct 31, 2024", "country": "Italy", "mood": "Nostalgia", "angle": "Wide Shot"}, {"id": 69, "img": "photos/69.jpg", "caption": "🐶หมาที่โชคที่สุดในโลก\nJoommeng🫶", "location": "The Mall Bangkae เดอะมอลล์บางแค", "date": "Oct 12, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 70, "img": "photos/70.jpg", "caption": "🍵", "location": "Petit Soleil", "date": "Sep 24, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 71, "img": "photos/71.jpg", "caption": "Bang lam phu 🫶🏻", "location": "พิพิธบางลำพู", "date": "Sep 18, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 73, "img": "photos/73.jpg", "caption": "Another capture in 🇮🇹", "location": "Venezia, Italia", "date": "Sep 09, 2024", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 74, "img": "photos/74.jpg", "caption": "“ทำบางสิ่ง รักบางคน ทนบางอย่าง”\n- talkshow ประภาคารกลางมหาสมุทร, นิ้วกลม, 2024", "location": null, "date": "Aug 18, 2024", "country": null, "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 75, "img": "photos/75.jpg", "caption": "“ทำบางสิ่ง รักบางคน ทนยางอย่าง”\n- talkshow ประภาคารกลางมหาสมุทร, นิ้วกลม, 2024", "location": null, "date": "Aug 18, 2024", "country": null, "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 76, "img": "photos/76.jpg", "caption": "มีชีวิตวันนี้\nเพื่อ\nวันนี้", "location": "Umihotaru", "date": "Aug 09, 2024", "country": "Japan", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 77, "img": "photos/77.jpg", "caption": "🫶🗻\nPlease believe that this too shall pass, all the hardness this year’ll bring me somewhere I never see, a hard one, but the right one", "location": "Kawaguchiko Lake (Fujisan)", "date": "Jul 16, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 78, "img": "photos/78.jpg", "caption": "เยาวราช 22.00", "location": "เยาวราช กรุงเทพฯ China Town in Bangkok, Thailand", "date": "Jul 13, 2024", "country": "China", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 79, "img": "photos/79.jpg", "caption": "Life with no comparison\nIs the life full of freedom", "location": "ตลาดน้อย", "date": "Jul 11, 2024", "country": "Thailand", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 80, "img": "photos/80.jpg", "caption": "Shadow test 🦋", "location": null, "date": "Jul 07, 2024", "country": null, "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 81, "img": "photos/81.jpg", "caption": "🐶", "location": "Shibuya Crossing", "date": "Jun 28, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 82, "img": "photos/82.jpg", "caption": "💚", "location": "Narita-San Shinsho-Ji Temple", "date": "Jun 20, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 83, "img": "photos/83.jpg", "caption": "Golden hour", "location": "The Old Siam Plaza", "date": "Jun 16, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 84, "img": "photos/84.jpg", "caption": "As I grow\nI start to realize\nthat anything\ncould teach me\na really good lesson\nand give me priceless\nexperiences\n\nIt’s not always about being happy and comfort\nIt does never meant to be easy\nBut it is how I think I could embrace the thing\nas challenges rather than obstacles\n\nand after all, It’s just the life that only own by ourself🫶", "location": "Prato Della Valle - Padova", "date": "Jun 12, 2024", "country": "Italy", "mood": "Joy", "angle": "Vertical Frame"}, {"id": 85, "img": "photos/85.jpg", "caption": "จังหวะเผลอ\nไม่ได้ตั้งใจ\nคาดเดาไม่ได้\nแต่มันก็จะดี\nในแบบที่เราตั้งใจทำไม่ได้\n🤣", "location": "Hakone", "date": "Jun 03, 2024", "country": "Japan", "mood": "Determination", "angle": "Vertical Frame"}, {"id": 86, "img": "photos/86.jpg", "caption": "NVM view", "location": "ตึกนวมินทร์ โรงพยาบาลศิริราช", "date": "May 28, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 87, "img": "photos/87.jpg", "caption": "1 year ago🇮🇹❤️", "location": "Duomo Di Firenze", "date": "May 16, 2024", "country": "Italy", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 88, "img": "photos/88.jpg", "caption": "🌹\n“Your destiny is uncertain\nAnd that’s sometimes hard to take\nBut it will become much clearer\nWith every new choice you make”\n- song: You’ll play your part MLP:FIM ss4\n📸 by &#064;double_a_nekoto", "location": null, "date": "May 11, 2024", "country": null, "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 89, "img": "photos/89.jpg", "caption": "Pursuit of our 132’s destiny start here\nขอให้ทุกคนโชคดีกับชีวิตชั้นคลีนิคคับ", "location": "ห้องประชุมอวยเกตุสิงห์", "date": "May 09, 2024", "country": "Thailand", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 90, "img": "photos/90.jpg", "caption": "Just when you realized it\n1 whole year seems like just yesterday❤️\n\nFrom strangers to friends, from people to family\nOne year ago, one exchange program 🇮🇹\nThanks for teaching me how to love myself and humanbeing✌️", "location": "Opera di S Maria Del Fiore", "date": "May 01, 2024", "country": "Italy", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 91, "img": "photos/91.jpg", "caption": "unpopular sight in popular places.\n————————————————————————\nนิสัยแปลกๆนึงของเราก็คือ ไม่ชอบถ่ายให้เห็นเต็มวัตถุ แต่จะโฟกัสไปที่จุดที่ชอบอะ🤣 ในแง่ความสวยงามก็แง่หนึ่ง แต่ในแง่ว่ามุมเราไม่ซ้ำใครนี่แหละทำให้การไปที่ๆใหนก็ได้รูปไม่ซำ้ 📸ในโลกที่เราพยายามผลิตซำ้ความงามตามมาตรฐานว่าต้องมาที่นี่ ต้องมีสิ่งนั้น ทำให้ความงามที่เรียบง่ายอาจะถูกมองข้ามไปนะ❤️", "location": "Sensō-ji", "date": "Apr 28, 2024", "country": "Japan", "mood": "Wonder", "angle": "Wide Shot"}, {"id": 92, "img": "photos/92.jpg", "caption": "😴🐱", "location": "ตลาดน้อย", "date": "Apr 25, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 93, "img": "photos/93.jpg", "caption": "It all stared here\nPlace that sparks my joy in science🫶", "location": "โรงเรียนอุดมวิทยา", "date": "Apr 15, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 94, "img": "photos/94.jpg", "caption": "The day i was born\nWelcome 21", "location": "พิพิธภัณฑ์ศิริราชพิมุขสถาน - Siriraj Bimuksthan Museum", "date": "Apr 10, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 95, "img": "photos/95.jpg", "caption": "Another café", "location": "Udomporn Cafe", "date": "Apr 08, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 97, "img": "photos/97.jpg", "caption": "ยังลงรูปฟูจิอีกกี่รูป\n- ตลอดไป🤣", "location": "Kawakuchiko, Japan", "date": "Mar 31, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 98, "img": "photos/98.jpg", "caption": "ชีวิต\nไม่ใช่\nสิ่งหนึ่งสิ่งใด\n\nแต่เป็น\nโอกาส\nสำหรับ\nสิ่งใดสิ่งหนึ่ง\n\nChristian Friedrish Hebbel\n\n📸Fujifilm ACE400 disposable\n📍Florence, Italy, May 2023", "location": "Duomo Di Firenze", "date": "Mar 29, 2024", "country": "Italy", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 99, "img": "photos/99.jpg", "caption": "If there is weird reason to live, what’d be your answer?\nThis is My reason.\n\nThailand Pony Convention 2018,2019 - 5 & 6 years anniversary❤️\nBrony (n.) - fans of the show called “My little pony : Friendship is Magic”", "location": "E88 Bangkok", "date": "Mar 24, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 100, "img": "photos/100.jpg", "caption": "Shibuya mood❤️🇯🇵", "location": "渋谷スクランブルスクエア / Shibuya Scramble Square", "date": "Mar 21, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 101, "img": "photos/101.jpg", "caption": "Strangers", "location": "Piazza Del Duomo, Firenze", "date": "Mar 14, 2024", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 103, "img": "photos/103.jpg", "caption": "Last evening", "location": "Tokyo, Japan", "date": "Mar 04, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 104, "img": "photos/104.jpg", "caption": "Evening walk & capture📸", "location": "เพาะช่าง-สวนกุหลาบ", "date": "Mar 02, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 105, "img": "photos/105.jpg", "caption": "Photos = Effort + Miracle\nLife is too❤️", "location": "Yamanashi Prefecture, Japan", "date": "Feb 27, 2024", "country": "Japan", "mood": "Reflection", "angle": "Vertical Frame"}, {"id": 106, "img": "photos/106.jpg", "caption": "A short night in Shinjuku\nFt. Autumn leave in Winter", "location": "Shinjuku Tokyo,Japan (日本东京，新宿）", "date": "Feb 24, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 107, "img": "photos/107.jpg", "caption": "Edward Christopher Sheeran\nRajamangala National Stadium, Bangkok\n10 Feb 2024\n#edsheeran", "location": "Rajmangala National Stadium", "date": "Feb 21, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 108, "img": "photos/108.jpg", "caption": "Tone : 💚🤎💙", "location": "Oyard", "date": "Feb 15, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 109, "img": "photos/109.jpg", "caption": "Take it easy\nWat Pho, Bangkok", "location": "วัดพระเชตุพนวิมลมังคลารามราชวรมหาวิหาร", "date": "Feb 11, 2024", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 111, "img": "photos/111.jpg", "caption": "First glance of the third time of Mt.fuji\n\n𝐖𝐡𝐚𝐭 𝐈’𝐝 𝐠𝐢𝐯𝐞 𝐟𝐨𝐫 𝐣𝐮𝐬𝐭 𝐚 𝐦𝐨𝐦𝐞𝐧𝐭 𝐭𝐨 𝐡𝐨𝐥𝐝 𝐘𝐞𝐚𝐡, 𝐈 𝐥𝐢𝐯𝐞 𝐟𝐨𝐫 𝐭𝐡𝐢𝐬 𝐟𝐞𝐞𝐥𝐢𝐧’, 𝐭𝐡𝐢𝐬 𝐞𝐯𝐞𝐫𝐠𝐥𝐨𝐰 - 𝐄𝐯𝐞𝐫𝐠𝐥𝐨𝐰, 𝐂𝐨𝐥𝐝𝐩𝐥𝐚𝐲", "location": "Mt. Fuji, Yamanashi, Japan", "date": "Feb 07, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 112, "img": "photos/112.jpg", "caption": "Shibuya Cross", "location": "Shibuya Crossing", "date": "Feb 04, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 113, "img": "photos/113.jpg", "caption": "↓ Below for my diary\n“Look at the stars\nLook how they shine for you\nAnd everything you do\nYeah, they were all yellow”\n#coldplaybangkok \n——————————————-\n\nเราว่า ดนตรีมันเป็นของยูนีคของโลกใบนี้นะ\n\nไม่ว่าเราจะมาจากใหนกัน เป็นคนที่ใหน แต่เพลงเดียวกันทำให้เราอยากจะร้องเพลงให้สุดเสียงได้ชนาดนี้\n\nกับหลายๆคนคอนเสิร์ตไม่ใช่แค่ความบันเทิง แต่เป็นที่ๆเราได้เอาจิตวิญญาณของเราเติมลงไป\n\nบางคนบอกว่าเพลงนี้เป็นเพลงแรกที่ทำให้ความรักเกิดขึ้น หรือจะเป็นเพลงที่ทำให้คิดถึงคนที่จากไป หรือเรื่องอะไรก็เหอะ แต่ทุกคนมีเรื่องราวของตัวเองที่ผูกกับเพลงได้ดีมากๆ\n\nครั้งแรกกับคอนเสิร์ตในชีวิต แวบแรกคือจำนวนคนครึ่งแสนในสนาม แวบที่สองคือเสียงกระหึ่มของเพลง และจุดที่ทำให้ขนลุกที่สุดคือสิ่งที่ยูนีคที่สุดในคอนเสิร์ตนี้ คือดวงไฟบนข้อมือทุกคน ทำให้เรากลายเป็นส่วนนึงของงานแสดงขึ้นมา\n\nเพลงที่เรารู้จักและร้องได้มีไม่ถึงครึ่ง แต่พอได้ร้อง มันเหมือนเรา คนข้างๆ คนทั้งสนามและศิลปิน ในที่นี้นักร้องนำคือ Chris martin เราไม่ได้ตามมามากแต่วงแสดงให้เห็นแพชชั่นที่จะทำให้โลกนี้ดีขึ้น ทั้งแง่สิ่งแวดล้อม เอาเงินค่าคอนเสิร์ตเราไปช่วยโลก มีแดนซ์ฟลอและจักรยานให้ปั่นชาร์จแบตขึ้นเวที ไอเดียนี้หาที่ใหนไม่ได้จริงๆ เพลงที่ร้องบางเพลงก็เพื่อสื่อถึงความเป็นคนๆนึงเท่านั้น \n\nWe are capable of kindness, so they call us humankind\n\nMy human heart, only got a human heart, i wish i didnt run away, I wish didnt fall apart\n\nใหนจะความที่คริส wish ว่าเราจะเป็นหนึ่งเดียวกันกว่านี้ อย่าได้ขวางกั้นอะไรกันเลย อย่างที่เค้าได้ express ว่าอยากไปประเทศจีนมากๆ เพราะเราก็แค่อยากฟังเพลงเค้าเท่านั้นเอง\n\nมู้ดของ coldplay เดียวเลยคือ อินมากๆกับอารมณ์ที่ได้รับมา ขอบคุณนะครับ\n\n-**อย่าถามความคุ้มค่าดีกว่า ถามว่าเรามีโอกาสมาทำอะไรแบบนี้กี่หนกัน**", "location": "Rajmangala National Stadium", "date": "Feb 03, 2024", "country": "Thailand", "mood": "Wonder", "angle": "Wide Shot"}, {"id": 114, "img": "photos/114.jpg", "caption": "🇯🇵", "location": "Asakusa Sensoji Temple & Ueno Park", "date": "Jan 25, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 115, "img": "photos/115.jpg", "caption": "“Why I have to do it, I don’t know, but want to see what happen if I don’t give up” - someone but definitely not me just make it looks cool\n\nA sunset in Tokyo, 2.01.2024", "location": "Tokyo, Japan", "date": "Jan 18, 2024", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 116, "img": "photos/116.jpg", "caption": "ไม่มีรูปวันเด็กเอารูปตอนโตละกัน\n\nAlways be young with life", "location": null, "date": "Jan 13, 2024", "country": null, "mood": "Reflection", "angle": "Square Frame"}, {"id": 117, "img": "photos/117.jpg", "caption": "Akemashite omedetō gozaimasu\nสวัสดีปีใหม่ 2024 🎍\nด้วยความที่ว่าวางแผนไปเที่ยวญี่ปุ่นในช่วงปีใหม่ครั้งแรก เลยไม่ได้ทำอะไรแบบที่เค้าทำกัน เคานท์ดาวน์ไม่มี ส่งข้อความก็ไม่มี เพราะทัวร์นี้ต้องรีบนอน ตื่นเช้า คือนอนน้อยจัดๆ น้อยจนเริ่มลืมของ ปกติเป็นคนไม่ลืมของเลย555 แต่ก็ทำได้ สนุกดี ได้อะไรมาไม่มาก ไม่เต็มอิ่ม แต่ก็ได้ใช้เวลาเต็มที่\n\n2023 recap\nมองย้อนกลับไป 1 ปีที่ผ่านมา ปีนี้ถือว่ามีอะไรเปลี่ยนไปไม่น้อย เติบโตขึ้นในหลายๆอย่าง มีเหตุการณ์ที่เข้ามา จนเหมือนเราอ่อนแอ แต่จริงๆมันแปลว่าเราได้เรียนรู้อะไรทุกครั้งๆ แล้วก็รูัว่าความกังวล ความคาดหวัง ความเกรงใจที่มากไป เป็นส่วนหนึ่งของตัวเราและเราจะต้องรู้จักมันให้ดี เช่นปีนี้เห็นชัดขึ้นมากๆ☺️\n\nเรื่องนอกตัวเราหลายอย่างเป็น achievement 😆ที่เรารอคอยมานานเป็นปี คือการออกเดินทางไปที่ใหม่ๆ ⛩️ เกียวโต นาโกย่า ยามานาชิ โตเกียว ปาโดวา ฟลอเรนซ์ และเวนิส🇮🇹 การไปเที่ยวมันได้อะไรหลายๆอย่างมาก จะเสพสุขก็ได้ เรียนรู้ก็ดี ตั้งแต่ช็อปปิ้ง ถ่ายรูป สังเกตวัฒนธรรม ชมศิลปะวิจิตรไปจนถึงการฝึกพูด อย่างกะว่าเราได้ทำลายขอบเขตว่า เราเป็นคนไทย ไปบ้าง 🤣 ถึงจะพูดได้ไม่กี่คำ แต่แค่คำว่า Arigatou gozaimasu 🇯🇵หรือ Grazie 🇮🇹คำของคุณแสดงน้ำใจไมตรีต่อเพื่อนมนุษย์ ท่องแค่คำเดียวต่อภาษา เรารู้สึกเหมือนได้เชื่อมโยงกับคนต่างถิ่นต่างวัฒธรรมได้ไปโดยปริยาย\nเรียนปีสามนี้เป็นปีที่ไม่ยากเท่าปีสอง ยังมีหลายอย่าง ที่ยังจำไม่ได้และตามหลอกหลอนมาจนถึงตอนนี้555 แต่ปีสองพี่ลงทุนไปเยอะก็เริ่มเห็นผล คือดีที่ตัวเองตั้งใจแหละ😅\n🎼กิจกรรมเรายะงไม่เก่งมาก แต่เริ่มขยับมาทำงานแนวหน้าเป็นครั้งแรกอย่าง Coreteam openhouse สนุกมากแล้วก็ได้รู้จักเพื่อนๆพี่ๆ ได้ฝึกทำงาน เห็นว่าการจัดกิจกรรมสเกลใหญ่ทั้งผู้เข้าร่วมและผู้จัดมันไม่ใช่ง่ายๆ🤯\nสุดท้ายปีนี้เรารู้สึกว่าเราร้องไห้ไปหลายครั้ง แต่ก็ยิ้มเยอะขึ้นด้วย เป็นปีที่เป็น rollercoster ไม่ใช่จุดสิ้นสุดแต่มันเป็นของยากจริงๆ ก็ต้องบอกตัวเองว่าเราผ่านทุกอย่างในปีนี้มาได้เพราะเราสู่จริงๆ✌️แม้เราจะไม่เคยพูดว่า ‘สู้ดิวะ’ แต่มันกำลังเติบโตในใจเรา\n🎄อีกอย่างที่ปีนี้ให้เราคือ ‘ผู้คน’ ที่ดีมากมาย ทำให้เราพร้อมที่จะยิ้มให้กับชีวิตต่อไป เราเป็นคนแปลกหน้ากันเมื่อกี้ ตอนนี้เราคุยเรื่องที่เราไม่เคยพูด\n\n“แม้เราไม่สลักสำคัญอะไรต่อโลก แต่ใจเราที่จะยิ้ม ที่จะสู้ ที่จะมีความสุขและเป็นตัวเอง จะเป็นสลักสำคัญต่อการมีอยู่ของเรา\nI’m not significant to the world, but my will to smile, to persist, to be happy and be myself is significant to my existence”", "location": null, "date": "Jan 03, 2024", "country": null, "mood": "Joy", "angle": "Square Frame"}, {"id": 118, "img": "photos/118.jpg", "caption": "Top Photo 2023\nถือเป็นการเปลี้ยนแปลงที่ดีนะ เราลงรูปตัวเอง\nเยอะขึ้นมาก555 จะได้รู้ว่าไอรูปที่ถ่ายมาเนี่ยใครถ่าย🤣", "location": null, "date": "Jan 01, 2024", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 119, "img": "photos/119.jpg", "caption": "Xmas ย้อน", "location": "The Village Farm To Cafe'", "date": "Dec 26, 2023", "country": "Thailand", "mood": "Nostalgia", "angle": "Square Frame"}, {"id": 120, "img": "photos/120.jpg", "caption": "แยกย้าย เติบโต พบเจอ เล่าสู่ ท่องเที่ยว เอ็นจอย ดื่มด่ำ ย้อนนึก ชื่นชม งดงาม โอกาส พูดคุย สะท้อนคิด ลมเย็น รอคอย ความในใจ ประสบการณ์ กำลังใจ ดื่มด่ำ แพชชั่น สิ่งเดิม ซอฟต์พาวเวอร์ ขอบคุณ แยกย้ายอีกครั้ง", "location": "วัดอรุณราชวราราม", "date": "Dec 23, 2023", "country": "Thailand", "mood": "Joy", "angle": "Square Frame"}, {"id": 121, "img": "photos/121.jpg", "caption": "&#064;artspace.2023 \nName : กาลเวลาชักจูง\nเกียวโต 2020 และ 2023\n\nเมื่อต้นปี 2020 สถานการณ์โควิดทำให้ที่นี่ร้างผู้คน ฤดูหนาวปีนั้นทำให้ต้นไม้ใบหญ้าร่วงดูแห้งสนิท สีถนนก็ซีดสนิทไปตามกาลเวลา แต่เมื่อเดินทางกลับมาอีกครั้งในฤดูใบไม้ผลิต 2023 ก็ได้เห็นผู้คนกลับมาท่องเที่ยว ถนนเต็มไปด้วยเสียงจอแจ ใบไม้กลับผลิบานอีกครั้ง ถนนถูกแต้มทาสีใหม่อีกครั้ง นับเป็นความรู้สึกของการได้กลับมาเยือน ”บ้าน” ที่กลับมาสวยอีกครั้ง เพราะบ้าน ไม่ได้มีที่เดียวในชีวิตของเรา หลายๆครั้งบ้านคือที่ๆเรารู้สึกอุ่นใจ ที่ได้กลับไปเยี่ยมเยียน หรือเป็นที่ๆเต็มไปด้วยความทรงจำเมื่อครั้งก่อนที่มาเยือน ผมกลับนึกถึงปี 2020 แม้ที่นี่จะเงียบเหงา แต่ที่ผมมาเที่ยวที่นี่กับเพื่อนๆมัธยม แต่ในปี2023นี้ ทุกคนต่างแยกย้ายไปเติบโต การกลับมาในที่เก่าๆก็ชวนให้เรานึกถึงผู้คนในวันวาน ที่เคยเป็นบ้านของเราด้วยเช่นกัน", "location": "ตึกสยามินทร์ ชั้น 4 โรงพยาบาลศิริราช", "date": "Dec 13, 2023", "country": "Thailand", "mood": "Joy", "angle": "Wide Shot"}, {"id": 122, "img": "photos/122.jpg", "caption": "ความสุข ไม่ใช่สิ่งใหม่ที่ต้องไขว่คว้า แต่อยู่ในตัวเราเสมอมา เพียงแต่ทำหล่นไปบ้าง อย่าลืมเก็บมันขึ้นมานะ✌️", "location": "Padova, ITALY", "date": "Dec 01, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 123, "img": "photos/123.jpg", "caption": "One Life\nLive once", "location": "Piazza Del Duomo, Firenze", "date": "Nov 27, 2023", "country": "Italy", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 125, "img": "photos/125.jpg", "caption": "จริงอยู่ที่ไม่มีแต้มเลข แต่นั่นไม่ได้แปลว่ามันไม่มีอะไร\nเหมือนบางอย่างที่เราไม่ได้เกียรติบัตรกลับมาก็จริง แต่ที่ผ่านมาตรงนั้นสำคัญกว่าจริง", "location": "สนามศุภชลาศัย", "date": "Nov 19, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 127, "img": "photos/127.jpg", "caption": "เติบโต เกื้อกูล ดื่มด่ำ แบ่งปัน\n\nKhamphak 2023 👀", "location": "คณะแพทยศาสตร์ศิริราชพยาบาล มหาวิทยาลัยมหิดล", "date": "Nov 16, 2023", "country": "Thailand", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 128, "img": "photos/128.jpg", "caption": "Embrace a challange to an exprerince can not be foced.\n\nอาจจะเป็นไปไม่ได้ที่จะบังคับให้ใครมาชอบ อิน ทุ่มเท ภูมิใจในความเหน็ดเหนื่อยได้นัก แต่บางคนก็จะกล่าวว่าได้สิ เพราะความรู้สึกร่วมกับเพื่อนๆ หรือเพื่อความสวยงามที่ออกมา\n\nแต่เราหวังเป็นอย่างยิ่ง ว่ามันจะมีทางที่ดีกว่า ยอมรับว่าไม่ง่ายเลย มันอาจจะเสี่ยงที่จะทำให้มันหายไป แต่มันคงต้องเปลี่ยนแปลงไปสักวัน❤️\n\n1 ก.ค. 2561", "location": "สนามศุภชลาศัย", "date": "Nov 10, 2023", "country": "Thailand", "mood": "Wonder", "angle": "Wide Shot"}, {"id": 129, "img": "photos/129.jpg", "caption": "The birth of venus\n- Florence, Italty, May 2023\n\nเดี๋ยวจะไม่ได้อวดว่าไปดูมาจริงๆ🤣", "location": "Gallerie degli Uffizi", "date": "Nov 09, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 131, "img": "photos/131.jpg", "caption": "Firenze (again)", "location": "Uffizi Gallery", "date": "Oct 28, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 132, "img": "photos/132.jpg", "caption": "Seadfood🐟", "location": "Casa di Laciana al mare", "date": "Oct 23, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 133, "img": "photos/133.jpg", "caption": "Seaside equestrian 🐎", "location": "Hyatt Regency Hua Hin", "date": "Oct 16, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 134, "img": "photos/134.jpg", "caption": "พอแทนArashiyamaได้อยู่😂\n📸 &#064;tree_dimitri", "location": "วัดเขาสูงแจ่มฟ้า อำเภอท่ามะกา", "date": "Oct 09, 2023", "country": "Thailand", "mood": "Joy", "angle": "Square Frame"}, {"id": 135, "img": "photos/135.jpg", "caption": "ตอนแรกที่เขียนใบสมัครไป\nก็เขียนไปซะเยอะนะว่าเราอยากจะมา enjoy architechture เค้า\nแต่ใจจริงไม่อินหรอกออกเฉยๆ\n\nพอมาดูจริง อื้อหือเลย ทำไมมันขนลุกอย่างงี้\n\nที่ๆต้องไปของ Florence\n✅ Duomo ในจตุรัสกลางเมือง\n✅ ชมวิวแม่นำ้ฝั่งตรงข้าม the must\n✅ Museum กับ gallery\n✅ เดินขึ้นหอคอย เหนื่อยแต่คุ้ม\nFood ก็ต้องแนะนำ\n✅ sandwich สูตร Firenze \n✅ เสต็ก “Fiorentina”\n✅✅✅ เจลาโต้ once daily\n\nNote : รูปหลังมาจาก venice museum", "location": "Piazza Del Duomo, Firenze", "date": "Oct 05, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 136, "img": "photos/136.jpg", "caption": "ควันหลงสมานมิตร", "location": "Suankularb Wittayalai School", "date": "Oct 03, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 137, "img": "photos/137.jpg", "caption": "จิตวิญญาณเปลี่ยนแปลงสิ่งไร้ราคา ให้กลายเป็นความสวยงาม\nหากไม่มีจิตวิญญาณนั้น มันก็กลับไปเป็นแค่วัตถุธรรมดา 🪄🪄", "location": "Piazza del Duomo", "date": "Sep 23, 2023", "country": "Italy", "mood": "Wonder", "angle": "Square Frame"}, {"id": 138, "img": "photos/138.jpg", "caption": "1 วัน ร้อยรูปแหละ🇮🇹", "location": "Venezia,Italy", "date": "Sep 15, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 139, "img": "photos/139.jpg", "caption": "อย่าให้ใครมาบอกว่าสิ่งที่เราทำมันไม่เวิร์ค\nเพียงเพราะมันแค่ไม่เหมือนคนอื่น\n\nPlease don’t give up your way, only because someone tell you it won’t work\n\nแด่ท่าจับปากกา ที่ไม่เคยเหมือนใครบนโลก🤣", "location": "Calton Hotel Sukhumwit27", "date": "Sep 10, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 140, "img": "photos/140.jpg", "caption": "ไปในที่ ที่ไม่เคย จึงเห็นมากขึ้น\nไม่คุ้นเคย ไม่ใช่เพราะโลกเราแคบ\nแต่เพราะโลกนี้กว้าง\n\nรู้ว่าโลกกว้างนี้น่าค้นหา น่าเดินทาง\nเราก็จะก้าวหาความไม่คุ้นเคยต่อไป\nเพราะความไม่คุ้นเคย ถามเราเสมอ ว่าเราเป็นใคร ในความไม่ชินนั้น", "location": "Basilica Sant'Antonio Padova", "date": "Sep 08, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 141, "img": "photos/141.jpg", "caption": "Nice old moments here at the same place we used to be\n#samarnmitr66", "location": "Suankularb Wittayalai School", "date": "Sep 01, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 142, "img": "photos/142.jpg", "caption": "Human\nhas no border\n\nFirst time seeing a city from the plane during the mid-flight altitude ❤️\n\nLocation : somewhere around Turkiye, May 2023", "location": null, "date": "Aug 25, 2023", "country": null, "mood": "Wonder", "angle": "Wide Shot"}, {"id": 143, "img": "photos/143.jpg", "caption": "ยังเบิกบานในความร่วงโรย", "location": "Oshino Hakkai", "date": "Aug 17, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 144, "img": "photos/144.jpg", "caption": "Family chatting at a secret café\nPhotographer &#064;tree_dimitri 🙏", "location": "linlin Kanchanaburi", "date": "Aug 15, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 145, "img": "photos/145.jpg", "caption": "🕊️", "location": "Prato Della Valle - Padova", "date": "Aug 12, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 146, "img": "photos/146.jpg", "caption": "Came for a shelter \nEnded up to have another home❤️\n\nFirst time living with host family 🇮🇹", "location": "Padova, ITALY", "date": "Aug 03, 2023", "country": "Italy", "mood": "Wonder", "angle": "Wide Shot"}, {"id": 147, "img": "photos/147.jpg", "caption": "Coffee is not just a thing to wake you up anymore \n\nCoffee experience with &#064;double_a_nekoto", "location": "Soulful Coffee Roasters", "date": "Aug 01, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 148, "img": "photos/148.jpg", "caption": "Italian city view🧡", "location": "Venice Art", "date": "Jul 24, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 149, "img": "photos/149.jpg", "caption": "Glad I started taking pics\nNot because I’m good at\nBut I just like to do and someone sparked my feelings to start it all\n\n6 years ago at one of the best country to visit in lifetime🇨🇭", "location": "Montreux", "date": "Jul 11, 2023", "country": "Switzerland", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 150, "img": "photos/150.jpg", "caption": "[English ver. below]\nเคยเชื่อว่าเราเท่านั้นที่กำหนดชีวิตของเราเอง เชื่อจนโทษตัวเองเสมอเมื่อผิดหวัง จนรู้ว่าเรามีทั้งสิ่งที่ควบคุมได้และควบคุมไม่ได้ และถึงแม้เราจะควบคุมตัวเองได้ ก็ยังเป็นไปไม่ได้ที่จะทำทุกอย่างให้ถูกเสมอไป เพราะถ้าจะทำอย่างนั้น เราก็คงไม่ได้ใช้ชีวิต ใหนๆชีวิตก็ต้องผิดหวังกันบ้างอยู่แล้ว ก็ไม่ต้องกลัวที่ตัวเองจะทำพลาดบ้างเลย\n\nคิดว่าปล่อยให้ชีวิตพลาดบ้างมันคือเรื่องปกติหละนะ\n\nI used to believe that only myself controls my way. Believe so much that it hurts. Until I know what is in my control and what is not in my control. But even with the things I could, it was not possible make it perfect every time. Because to do that, life will be used only to perfect things. Life always have disappointment sometimes, so don’t fear to have some mistakes.\n\nMaybe, to let the life painted with mistakes is just a typical things", "location": "Florence, Italy", "date": "Jul 06, 2023", "country": "Italy", "mood": "Reflection", "angle": "Wide Shot"}, {"id": 152, "img": "photos/152.jpg", "caption": "ไม่ว่ายุคเก่าหรือใหม่ ก็มีบางอย่างที่คล้ายกันอยู่เสมอ", "location": "Uffizi Gallery, Florence", "date": "Jun 28, 2023", "country": "Italy", "mood": "Nostalgia", "angle": "Wide Shot"}, {"id": 153, "img": "photos/153.jpg", "caption": "Never ready for those future\n\nBut I know I will not let it break me", "location": "Yamanashi, Japan", "date": "Jun 26, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 154, "img": "photos/154.jpg", "caption": "Does we spend time behind the camera more than the actual place?\n\nI guess so\n\nVenezia, May 2023", "location": "Ponte di Rialto", "date": "Jun 24, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 156, "img": "photos/156.jpg", "caption": "Acceptance is silent\nBut yet it’s as important as those loud expressions of difference", "location": "Basilica di San Marco", "date": "Jun 20, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 157, "img": "photos/157.jpg", "caption": "Buona sera", "location": "Padova, ITALY", "date": "Jun 16, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 158, "img": "photos/158.jpg", "caption": "หนึ่งในวัฒนธรรมที่เข้าใจยากที่สุดในการไปต่างประเทศคือศาสนา แต่ก็มีหลายๆอย่างที่เข้าใจได้ โบสถ์ที่ดูธรรมดาที่นึงใส่ใจในรายละเอียดมากๆ ความใหญ่ของตัวโบสถ์ เพดานที่สูงมากจนเสียงก้องอยู่ภายในโบสถ์ การใช้แสงธรรมชาติจากภายนอกเข้ามา การตกแต่งและสถาปัตยกรรมทำให้ผู้คนรู้สึกว่าตนเองได้อยู่กับพระเจ้าในสถานที่เหล่านี้ ได้เห็นคนมาสารภาพบาปในโบสถ์อย่างสุดใจ ไม่เคยเห็นใครแสดงอารมณ์ของตัวเองได้มากเท่าที่นี่ แต่ก็เป็นที่ๆรู้สึกถึงความศรัทธาแรงกล้าทีเดียว \n\nAbbazia di Santa Giustina -First Church I saw in Padova", "location": "Abbazia di Santa Giustina", "date": "Jun 14, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 159, "img": "photos/159.jpg", "caption": "Italian architecture \nFrom Padova Florence and Venice", "location": "Italy", "date": "Jun 09, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 160, "img": "photos/160.jpg", "caption": "บางทีมันก็สับสน หากเมื่อทุกสิ่งไม่เป็นไปดังวาดไว้\n\nแต่เราก็ถึงได้โยนความคาดหวัง ที่เจาะจงกับเรื่องบางเรื่องอยู่ ‘ถ้าสิ่งนี้ไม่ดี แล้วสิ่งอื่นจะดีบ้างมั้ยเนี่ย’ เราเคยคิดอย่างนี้ แต่พอเราบอกตัวเอง ให้ ‘ช่างมัน’ กับสิ่งนั้นไปเลย ทั้งความคาดหวังกับตัวเอง หรือสิ่งอื่น \n\nเราก็เริ่มพบกับสิ่งดีๆ ที่ไม่เคยต้องนึกถึงแม้แต่น้อย เราคิดว่ามันเป็นครั้งแรกครั้งใหญ่ ที่เราเข้าใจว่าเรามัวแต่อยู่ในเซฟโซน ได้อย่างที่หวังมาตลอด แต่ถ้าเราได้ในอย่างที่ไม่ได้หวังไว้ก็ดีเหมือนกันนะ ถ้าเราไม่คาดหวังเสียก่อนแต่แรก เราจะชื่นชมทุกอย่างบนโลกนี้ได้มากทีเดียว", "location": "Shinjuku Tokyo,Japan (日本东京，新宿）", "date": "Jun 07, 2023", "country": "Japan", "mood": "Wonder", "angle": "Wide Shot"}, {"id": 161, "img": "photos/161.jpg", "caption": "Whatever choice I choose \nI know that it will led me somewhere, maybe not the best but never be the dead end", "location": "Narita, Japan", "date": "Jun 05, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 163, "img": "photos/163.jpg", "caption": "Til the last day", "location": "Padua, Italy", "date": "May 31, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 164, "img": "photos/164.jpg", "caption": "You are the first and the best foreigner friend I ever met ❤️\n\nThanks for every help along the exchange and wonderful memories \n\nI wish you good luck in medical career path and hope we meet again oneday✌️\n\n—IFMSA, SCORE project, May 2023 at Padova, Italy—", "location": null, "date": "May 30, 2023", "country": null, "mood": "Wonder", "angle": "Square Frame"}, {"id": 165, "img": "photos/165.jpg", "caption": "Pass by two river\nBut thousands miles away\nWithin my summer time\n\nLeft 🇯🇵 16.04.66\nNippon-bashi Bridge, Osaka, Japan \nRight 🇮🇹 13.05.66\nPonte delle Guglie, Venice, Italy", "location": "Ponte delle Guglie", "date": "May 29, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 166, "img": "photos/166.jpg", "caption": "งดงามในใจ\nWith Fujifilm simple ace", "location": "Venizia Santa Lucia station", "date": "May 23, 2023", "country": "Italy", "mood": "Wonder", "angle": "Wide Shot"}, {"id": 168, "img": "photos/168.jpg", "caption": "Maybe there’s a timeline that I decide not to do this, maybe regret or forget about it.\nBut here I am, passed all these things with my own decision.\nThe reason I want to keep this opportunity is still unknown, I just want to face whatever rather than doing nothing.\nThen I know why happiness is not a key of living, yet having pass all experiences through life and embrace with what I face. I felt fulfilled deeply, contempt in my heart and understanding more of others. Then I understand myself more, because I know more that I don’t know. It’s a knowledge having this gap of unknown. I know where I am better and the path I wish to have is clearer. Life is not to have everything, but to have decisions that I will thanks myself for my whole life.", "location": "Venezia,Italy", "date": "May 19, 2023", "country": "Italy", "mood": "Stillness", "angle": "Wide Shot"}, {"id": 169, "img": "photos/169.jpg", "caption": "Always keep your smile❤️\n- Host Mom, Padova, Italy", "location": "Bell Tower, Venice", "date": "May 18, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 170, "img": "photos/170.jpg", "caption": "แมวก็เหงาได้เหมือนกัน🐱", "location": "Padova Stazione dei Treni", "date": "May 15, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 171, "img": "photos/171.jpg", "caption": "Let’s the art speaks to us", "location": "Uffizi Gallery, Florence", "date": "May 14, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 172, "img": "photos/172.jpg", "caption": "Welcome to Venezia", "location": "Bell Tower, Venice", "date": "May 13, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 173, "img": "photos/173.jpg", "caption": "Pizzeria", "location": "Venezia,Italy", "date": "May 13, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 175, "img": "photos/175.jpg", "caption": "Another Firenze view", "location": "Ponte Vecchio", "date": "May 11, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 176, "img": "photos/176.jpg", "caption": "We always have light in the dark these days\nBut if something happens and the light is gone, what do we do next?", "location": "Shinjuku Gyoen National Garden", "date": "May 10, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 177, "img": "photos/177.jpg", "caption": "This view worth 717 stair steps❤️", "location": "Piazza Del Duomo, Firenze", "date": "May 08, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 178, "img": "photos/178.jpg", "caption": "Gorgeousness and Enormousness\nof the cathedral are not only a sign of rising of Christianity, but also a sign of human’s capacity to build or create something unreal and seems impossible. It reminds me of how much capacity we actually have if we believe(in anything), which is forgotten nowadays.\n\nCattedrale di Santa Maria del Fiore\nFlorence\nItaly", "location": "Opera di S Maria Del Fiore", "date": "May 08, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 179, "img": "photos/179.jpg", "caption": "2000 Years\nThis photo is not an art\nThese sculpture was art already\nWe came to the museum, not to replicate\nBut to fascinate and try to understand these ancient message", "location": "Uffizi Gallery, Firenze, Italy", "date": "May 06, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 180, "img": "photos/180.jpg", "caption": "Welcome to Florence", "location": "Firenze, Italy", "date": "May 06, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 181, "img": "photos/181.jpg", "caption": "🕯️", "location": "Abbazia di Santa Giustina", "date": "May 02, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 182, "img": "photos/182.jpg", "caption": "Padova Day2", "location": "Ponte delle Torricelle", "date": "May 01, 2023", "country": "Italy", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 183, "img": "photos/183.jpg", "caption": "❤️ This View\n\nFujisan, 2023", "location": "Yamanashi, Japan", "date": "Apr 29, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 184, "img": "photos/184.jpg", "caption": "Vancomycin?\n\nnear Yogan restaurant\nYamanashi, Japan 2023", "location": "Yamanashi, Japan", "date": "Apr 28, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 185, "img": "photos/185.jpg", "caption": "2023 visit\n\n“Who am I?\n…\nYou could say I’m your tomorrow.”", "location": "Suankularb Wittayalai School", "date": "Apr 27, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 186, "img": "photos/186.jpg", "caption": "Lucern, Switzerland - 2017\n\n“\nข้าแต่พระเจ้าผู้ทรงสถิตอยู่ใต้ดินแดนแห่งนี้ ปกป้องคุ้มครองเรามาหลายชั่วคน\nภูเขาและแม่น้ำทุกสายที่เป็นของท่าน \nซึ่งเรายึดถือเป็นของเรามาแสนนาน \nเราจะขอคืนทุกสิ่งกลับคืนไป…..(ขอส่งคืนกลับไป)\n“\nมุนะคาตะ โซตะ (การผนึกประตูของซุซุเมะ - すずめの戸締まり)", "location": "Lucerne Switzerland", "date": "Apr 26, 2023", "country": "Switzerland", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 187, "img": "photos/187.jpg", "caption": "Life is a fleeting, fragile thing, but we fight and hope to live one moment more\n\n-Souta Munakata, Suzume no Tojimari", "location": "Oshino Hakkai", "date": "Apr 25, 2023", "country": "Japan", "mood": "Reflection", "angle": "Square Frame"}, {"id": 188, "img": "photos/188.jpg", "caption": "Take less pics\nBecause less time\nThe only thing you can get is feeling of enjoyment\n\nさくら", "location": "Yamanashi, Japan", "date": "Apr 23, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 189, "img": "photos/189.jpg", "caption": "“ขณะนี้”มีครั้งเดียว\nไม่เกิดขึ้นซำ้\nงดงามในแบบของมัน\n\nท่ามกลางโลกที่ผลิตซำ้การเสพสุข\nเราจึงเข้าหาความงดงามที่แท้จริงภายใน\nไม่ใช่สิ่งที่ต้องแข่งขัน หรือต้องไขว่คว้า\n\nแต่เป็นเราเท่านั้นที่เข้าใจมัน", "location": "Shinjuku Gyeon National Garden", "date": "Apr 20, 2023", "country": "Japan", "mood": "Wonder", "angle": "Square Frame"}, {"id": 190, "img": "photos/190.jpg", "caption": "Wishes\n\nUnknown shrine in Shinjuku, Tokyo\nKomitake shrine, Yamanashi", "location": null, "date": "Apr 19, 2023", "country": null, "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 191, "img": "photos/191.jpg", "caption": "- ชิเดะ (Shide) กระดาษสีขาวทรงฟันปลา\n\nกระดาษสีขาวทรงฟันปลา สามารถพบได้ทั่วศาลเจ้า และมักจะถูกใช้เพื่อกำหนดเขตแดนศักดิ์สิทธิ์ภายในศาลเจ้า \"มิโกะ\" จะใช้ไม้โกเฮที่ติดชิเดะ 2 ชิ้นในพิธีกรรมเพื่อให้พรผู้คน แต่วัตถุประสงค์หลักที่แท้จริงของไม้นี้มีไว้เพื่อให้พรสิ่งของหรือชำระล้างพลังงานด้านลบออกจากสถานที่ศักดิ์สิทธิ์\n\nที่มา : tsunagujapan.com\nเพราถ่ายมาถึงได้มาหาข้อมูลว่ามันคืออะไร55", "location": "Komitake", "date": "Apr 18, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 192, "img": "photos/192.jpg", "caption": "Same place\nDifferent time\n2023 vs 2020\n\n- ป่าไผ่เกียวโต a.k.a. อาราชิยามะ", "location": "Arashiyama Bamboo", "date": "Apr 17, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 193, "img": "photos/193.jpg", "caption": "Komitake Shrine\n- located at Fuji-Subaru Line 5th Station\n\nYamanashi, Japan, 2023", "location": "Komitake", "date": "Apr 17, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 194, "img": "photos/194.jpg", "caption": "Time capsule", "location": "Togetsukyo Bridge", "date": "Apr 16, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 195, "img": "photos/195.jpg", "caption": "ありがとうございました \n\nNote : ช่วงนี้คนไทยอยู่ญี่ปุ่นได้ครึ่งปท.🤣", "location": "Yogan Onsen", "date": "Apr 16, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 196, "img": "photos/196.jpg", "caption": "🌸🗻", "location": "Yogan Onsen", "date": "Apr 15, 2023", "country": "Japan", "mood": "Wonder", "angle": "Square Frame"}, {"id": 197, "img": "photos/197.jpg", "caption": "Missed this place for so long\n\n- Yamanashi, Japan", "location": "Oshino Hakkai", "date": "Apr 15, 2023", "country": "Japan", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 198, "img": "photos/198.jpg", "caption": "Seek somewhere quiet surrounded by this excessive world…\n\nTokyo, 2023", "location": "Hanazono Shrine Shinjuku", "date": "Apr 14, 2023", "country": "Japan", "mood": "Stillness", "angle": "Square Frame"}, {"id": 199, "img": "photos/199.jpg", "caption": "25% used \nHBD to me 🎉", "location": "ท่าเรือท่ารถไฟ  N11", "date": "Apr 10, 2023", "country": "Thailand", "mood": "Joy", "angle": "Wide Shot"}, {"id": 200, "img": "photos/200.jpg", "caption": "sometimes, waking up to see sunrise and sea waves is the only thing you need", "location": "Eco Cozy Beachfront Chaam", "date": "Apr 09, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 201, "img": "photos/201.jpg", "caption": "Coming soon", "location": null, "date": "Apr 08, 2023", "country": null, "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 202, "img": "photos/202.jpg", "caption": "One day, Time will tell us to leave home.\n\nまたね\n\n-Senior Farewell 2023", "location": "สวนเฉลิมพระเกียรติ 72 พรรษา", "date": "Apr 07, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 203, "img": "photos/203.jpg", "caption": "Still growing strong…", "location": "สวนเบญจกิติ", "date": "Apr 05, 2023", "country": "Thailand", "mood": "Stillness", "angle": "Wide Shot"}, {"id": 204, "img": "photos/204.jpg", "caption": "Second year is coming to its end\nCaptured with Olympus EM10 (before ran out of battery🤣)", "location": "อาคารศรีสวรินทิรา", "date": "Mar 22, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 205, "img": "photos/205.jpg", "caption": "Chinese New Year 🧧", "location": "Amphoe Tha Mai", "date": "Jan 20, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 206, "img": "photos/206.jpg", "caption": "Fav market", "location": "Cicada Market", "date": "Jan 02, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 207, "img": "photos/207.jpg", "caption": "Let’s start our next 365\n#hny2023", "location": "Avani+ Hua Hin Resort", "date": "Jan 01, 2023", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 208, "img": "photos/208.jpg", "caption": "1 Semester", "location": "สะพานพระปิ่นเกล้า", "date": "Nov 04, 2022", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 209, "img": "photos/209.jpg", "caption": "#รับน้องข้ามฟาก2565", "location": "คณะพยาบาลศาสตร์ มหาวิทยาลัยมหิดล(รพ.ศิริราช)", "date": "Oct 26, 2022", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 210, "img": "photos/210.jpg", "caption": "“ตากล้องถ่ายรูปทุกคน ยกเว้นตัวเอง” 55\n\nแต่งานนี้เพื่อนถ่ายเก่งกันมาก👏\nขอบคุณเพื่อนตากล้องที่ได้ทำงานด้วยกันฮะ✨\n(ตาตี่มาก55)", "location": "ห้องประชุมราชปนัดดาสิรินธร อาคารศรีสวรินทิรา คณะแพทยศาสตร์ศิริราชพยาบาล", "date": "Aug 24, 2022", "country": "Thailand", "mood": "Reflection", "angle": "Square Frame"}, {"id": 211, "img": "photos/211.jpg", "caption": "ควันหลงรับน้อง😂\nชอบบรรยากาศนี้มาก", "location": "ห้องประชุมสิรินธร", "date": "Aug 20, 2022", "country": "Thailand", "mood": "Joy", "angle": "Square Frame"}, {"id": 212, "img": "photos/212.jpg", "caption": "Nice 2 Meet (sala)Ya 2022: Scalet identity\n\nPhotograph by me\n📷 owner &#064;monamonst", "location": "ห้องประชุมราชปนัดดาสิรินธร อาคารศรีสวรินทิรา", "date": "Aug 16, 2022", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 213, "img": "photos/213.jpg", "caption": "I realize that photograph is more than memory collecting.\nPhotograph needs to focus on things around you and find a way to present it as art, like this one; appreciate how shadow and lights play with each other. Mindfulness is a part of photography, appreciate simple or normal things in life.", "location": null, "date": "Aug 14, 2022", "country": null, "mood": "Nostalgia", "angle": "Square Frame"}, {"id": 214, "img": "photos/214.jpg", "caption": "Horizon\nCaptured Feb, 2020", "location": null, "date": "Jul 31, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 215, "img": "photos/215.jpg", "caption": "..acting like I never left.\nCaptured in 2021", "location": null, "date": "Jul 26, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 216, "img": "photos/216.jpg", "caption": "859 days ago.", "location": null, "date": "Jul 03, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 217, "img": "photos/217.jpg", "caption": "Second year", "location": null, "date": "Jun 23, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 218, "img": "photos/218.jpg", "caption": "Traveling…\nCapture with Fujifilm Simple ACE 400\nJapan 2020", "location": null, "date": "Jun 18, 2022", "country": null, "mood": "Everyday Moments", "angle": "Vertical Frame"}, {"id": 219, "img": "photos/219.jpg", "caption": "Japan’s signature?\nOsaka, Japan2020", "location": null, "date": "Jun 06, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 220, "img": "photos/220.jpg", "caption": "A small hostel in Namba, Osaka, Japan 2020\nBut now permanently closed TT", "location": "Very Hostel Namba", "date": "Jun 04, 2022", "country": "Japan", "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 221, "img": "photos/221.jpg", "caption": "Fushimi Inari shrine, Kyoto\nJapan 2018", "location": null, "date": "May 28, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 222, "img": "photos/222.jpg", "caption": "Real men will walk with their own feet.\nOsaka, Japan 2020", "location": null, "date": "May 22, 2022", "country": null, "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 223, "img": "photos/223.jpg", "caption": "Waiting for another visit…\nKyoto, Japan 2020", "location": null, "date": "May 21, 2022", "country": null, "mood": "Everyday Moments", "angle": "Wide Shot"}, {"id": 224, "img": "photos/224.jpg", "caption": "Railway - a war history\n\nLest we forget : “เราจะไม่ลืม”\nเป็นquoteที่เห็นบนประกาศและพิพิธภัณฑ์ช่องเขาขาด กล่าวถึงความสูญเสียและเรื่องราวอันเป็นบาดแผลของเชลยภายใต้การรุนรานจากจักรวรรดิญี่ปุ่น การสร้างสะพาน ขุดเจาะหินภูเขา (ในภาพที่2) ที่สร้างด้วยแรงงานคนอย่างยากลำบาก (พิพิธภัณฑ์และสถานที่แห่งนี้มีข้อความเท่านี่แหละที่จะบอก)\n\nความจริงที่มองไม่เห็น เลือดเนื้อของมนุษย์ที่เหมือนกัน ถูกแบ่งแยกออกด้วยคำว่าชาติ นำมาซึ่งการมองข้ามความเห็นใจ ถอยห่างจากความไว้ใจ ทำให้สงครามเป็นสิ่งที่แปดเปื้อนโลกใบนี้ จดจำไว้ว่าสงครามเป็นที่สูญเสีย แต่อย่าจดจำเพื่อที่จะสร้างมันขึ้นมาอีกครั้ง\n\nไปมาเมื่อวานเลย แต่กำหนดวันนี้มีทหารจาก Australia, New Zealand มาร่วมงานรำลึกที่ชื่อว่า Anzac dayด้วย สถานที่ก่อนงานก็เลยดูมีอะไรเพิ่มขึ้นมา\n\nได้ไปเที่ยวจังหวัดตัวเองบ้างแล้ว ไปไม่บ่อยเลยจะลงสักหน่อย\nถือว่าเป็นที่เที่ยวอีกแบบที่ดีเลย พิพิธภัณฑ์คนน้อยแต่ลงทุนเยอะมากๆ\n\nPhotograph with Olympus EM10", "location": "Hellfire Pass Interpretive Centre and Memorial Walkway", "date": "Apr 25, 2022", "country": "Thailand", "mood": "Joy", "angle": "Square Frame"}, {"id": 225, "img": "photos/225.jpg", "caption": "Welcome to the new Age\n-19- years", "location": null, "date": "Apr 10, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 226, "img": "photos/226.jpg", "caption": "-See you next flight-", "location": null, "date": "Mar 20, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 227, "img": "photos/227.jpg", "caption": "Play with fire🔥", "location": "Namu", "date": "Mar 18, 2022", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 228, "img": "photos/228.jpg", "caption": "-All system are go-\n\nPhotograph with iphoneXIII", "location": "ท่าอากาศยานสุวรรณภูมิ Suvarnabhumi Airport", "date": "Mar 17, 2022", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 229, "img": "photos/229.jpg", "caption": "There will be some bad days when darkness are around, But I believe it doesn’t mean that tomorrow can’t be brighter and just don’t give up to find brightness in our hearts.\n\nPhotographed with Olympus EM10\n-One random evening-", "location": null, "date": "Mar 09, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 230, "img": "photos/230.jpg", "caption": "-สถานที่สุดแสนธรรมดา กลับบันทึกความทรงจำต่างๆไว้มากมาย-\nSK 140 th anniversary🎉", "location": null, "date": "Mar 07, 2022", "country": null, "mood": "Joy", "angle": "Wide Shot"}, {"id": 231, "img": "photos/231.jpg", "caption": "The planet tells its story, painting a beautiful dream. As the voice it wants to hear so bad calls its name.", "location": null, "date": "Jan 24, 2022", "country": null, "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 232, "img": "photos/232.jpg", "caption": "Before we start..\nTake a break with some drinks\nพรุ่งนี้เปิดเทอม2 TT", "location": "Sornar - Take Away Only", "date": "Jan 02, 2022", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 233, "img": "photos/233.jpg", "caption": "แสบตาจัด😅", "location": "หาดชะอำ-เพรชบุรี", "date": "Jan 02, 2022", "country": "Thailand", "mood": "Everyday Moments", "angle": "Square Frame"}, {"id": 234, "img": "photos/234.jpg", "caption": "Happy New Year \nHappy New Start\n(ลืมลงจากFb😅)", "location": null, "date": "Jan 01, 2022", "country": null, "mood": "Joy", "angle": "Square Frame"}, {"id": 237, "img": "photos/237.jpg", "caption": "Every typical days & its unique view.", "location": "เกาะกลางน้ำตลาดลูกแก , กาญจนบุรี", "date": "Dec 02, 2021", "country": "Thailand", "mood": "Everyday Moments", "angle": "Wide Shot"}];
+
+const PHOTOS = {};
+PHOTOS_LIST.forEach(p => { PHOTOS[p.id] = p; });
+
+const GROUP_META = {
+  country: { label: 'Country', blurb: 'Sorted by geography — where the frame was standing when the shutter went.' },
+  mood:    { label: 'Mood',    blurb: 'Sorted by feeling — what the light and the moment were actually doing.' },
+  angle:   { label: 'Angle',   blurb: 'Sorted by frame — how the camera was held when the shutter went.' }
+};
+
+/* ---------------- ROUTING ---------------- */
+let currentGroup = null;
+let currentSub = null;
+
+function subsForGroup(group){
+  const map = {};
+  Object.keys(PHOTOS).forEach(id => {
+    const val = PHOTOS[id][group];
+    if(!val) return;
+    if(!map[val]) map[val] = [];
+    map[val].push(id);
+  });
+  return map;
+}
+
+function goTo(view, group){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  if(view === 'hero') document.getElementById('view-hero').classList.add('active');
+  if(view === 'categories') document.getElementById('view-categories').classList.add('active');
+  if(view === 'subs'){
+    currentGroup = group;
+    renderSubs(group);
+    document.getElementById('view-subs').classList.add('active');
+  }
+  window.scrollTo(0,0);
+}
+
+function goToSubsFromFeed(){
+  goTo('subs', currentGroup);
+}
+
+function renderCounts(){
+  ['country','mood','angle'].forEach(g => {
+    const n = Object.keys(subsForGroup(g)).length;
+    document.getElementById('count-'+g).textContent = n + (n === 1 ? ' category' : ' categories');
+  });
+}
+renderCounts();
+
+function sortedSubNames(subs){
+  return Object.keys(subs).sort((a,b) => subs[b].length - subs[a].length);
+}
+
+function renderSubs(group){
+  const meta = GROUP_META[group];
+  const subs = subsForGroup(group);
+  document.getElementById('subs-label').textContent = '02 — ' + meta.label;
+  document.getElementById('subs-heading').textContent = 'Sorted by ' + meta.label.toLowerCase() + '. Pick a category.';
+  const grid = document.getElementById('subs-grid');
+  grid.innerHTML = '';
+  sortedSubNames(subs).forEach(name => {
+    const ids = subs[name];
+    const coverId = ids[0];
+    const card = document.createElement('div');
+    card.className = 'sub-card';
+    card.onclick = () => openFeed(group, name);
+    card.innerHTML = `
+      <div class="swatch"><img src="${PHOTOS[coverId].img}" loading="lazy" alt=""></div>
+      <div class="grain-local"></div>
+      <div class="overlay">
+        <div class="s-name">${name}</div>
+        <div class="s-count mono">${ids.length} ${ids.length===1?'frame':'frames'}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function openFeed(group, subName){
+  currentGroup = group;
+  currentSub = subName;
+  const ids = subsForGroup(group)[subName];
+  document.getElementById('feed-back-label').textContent = subName;
+  document.getElementById('feed-total').textContent = String(ids.length).padStart(2,'0');
+
+  const scroll = document.getElementById('feed-scroll');
+  scroll.innerHTML = '';
+  ids.forEach((id, idx) => {
+    const p = PHOTOS[id];
+    const frame = document.createElement('div');
+    frame.className = 'frame';
+    const captionHtml = p.caption ? p.caption.replace(/\n/g,'<br>') : '';
+    frame.innerHTML = `
+      <div class="plate"><img src="${p.img}" loading="lazy" alt=""></div>
+      <div class="vignette"></div>
+      <div class="frame-content">
+        <div class="frame-caption">
+          <div class="f-loc mono">${p.location ? p.location : p.date}</div>
+          ${captionHtml ? `<h3>${captionHtml}</h3>` : ''}
+        </div>
+        <div class="frame-tag mono">
+          <div class="fnum">FRAME ${String(idx+1).padStart(3,'0')}</div>
+          <div>${p.date || ''}</div>
+        </div>
+      </div>
+    `;
+    scroll.appendChild(frame);
+  });
+
+  const end = document.createElement('div');
+  end.className = 'end-card';
+  end.innerHTML = `
+    <span class="mono label" style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:0.1em;">End of roll</span>
+    <h3>That's every frame in ${subName}.</h3>
+    <p>Head back and try looking a different way.</p>
+    <button class="hero-cta" onclick="goToSubsFromFeed()">Back to ${GROUP_META[group].label}</button>
+  `;
+  scroll.appendChild(end);
+
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-feed').classList.add('active');
+  scroll.scrollTop = 0;
+
+  scroll.onscroll = () => {
+    const h = scroll.clientHeight;
+    const i = Math.round(scroll.scrollTop / h) + 1;
+    document.getElementById('feed-progress').textContent = String(Math.min(i, ids.length)).padStart(2,'0');
+  };
+}
+
+</script>
+
+</body>
+</html>
